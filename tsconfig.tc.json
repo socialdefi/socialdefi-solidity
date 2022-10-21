@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"target": "esnext",
+		"module": "esnext",
+		"moduleResolution": "node",
+		"strict": true,
+		"esModuleInterop": true,
+		"outDir": "./dist",
+		"resolveJsonModule": true,
+		"declaration": true,
+		"sourceMap": true
+	},
+	"include": ["./src/**/*.ts"]
+}
