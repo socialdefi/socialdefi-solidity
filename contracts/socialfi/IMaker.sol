@@ -19,7 +19,7 @@ interface IMaker {
 	// Emit when created a new maker order.
 	event MakerMint(address indexed from_, uint256 indexed tokenId_, address indexed dex_);
 	// Emit when closed a maker order.
-	event MakerBurn(address indexed from_, uint256 indexed tokenId_, address indexed dex_);
+	event MakerBurn(address indexed from_, uint256 indexed tokenId_);
 
 	// Emit when maker order status changed.
 	event MakerUpdate(
@@ -47,8 +47,8 @@ interface IMaker {
 		view
 		returns (
 			Maker memory maker_,
-			uint256 settleSkuQuantityOrId_,
-			uint256 settlePaymentQuantityOrId_,
+			uint256 sentSkuQuantityOrId_,
+			uint256 receivedPaymentQuantityOrId_,
 			address dex_
 		);
 
@@ -57,10 +57,18 @@ interface IMaker {
 	 *
 	 * @param makerId_ approve target maker id.
 	 */
-	function approveDex(address makerId_, address to_) external;
+	function approveDex(uint256 makerId_, address to_) external payable;
+
+	/**
+	 * @dev Mint new maker order.
+	 */
+	function mintMaker(Maker memory maker_, address dex_)
+		external
+		payable
+		returns (uint256 makerId_);
 
 	/**
 	 * @dev Close maker.
 	 */
-	function closeMaker(address makerId_) external;
+	function closeMaker(uint256 makerId_) external;
 }

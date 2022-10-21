@@ -3,8 +3,6 @@ pragma solidity ^0.8.0;
 
 import './IMaker.sol';
 
-import '@openzeppelin/contracts/utils/introspection/IERC165.sol';
-
 interface ITaker {
 	// Emit when created a new taker order.
 	event TakerMint(
@@ -50,11 +48,6 @@ interface ITaker {
 		);
 
 	/**
-	 * @dev Close taker.
-	 */
-	function closeTaker(address takerId_) external;
-
-	/**
 	 * @dev Maker contract invoke this method to complete a dex transaction.
 	 *      Implementation must check if msg.sender is maker contract address.
 	 */
@@ -63,4 +56,20 @@ interface ITaker {
 		uint256 responseSkuQuantityOrId_,
 		uint256 responsePriceQuantityOrId_
 	) external;
+
+	/**
+	 * @dev mint new taker order.
+	 */
+	function mintTaker(
+		address depsoitFrom_,
+		address maker_,
+		uint256 makerId_,
+		uint256 requestSkuQuantityOrId_,
+		uint256 requestPriceQuantityOrId_
+	) external payable returns (uint256 takerId_);
+
+	/**
+	 * @dev Close taker.
+	 */
+	function closeTaker(uint256 takerId_) external;
 }

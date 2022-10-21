@@ -6,10 +6,5 @@ interface ITakerReceiver {
 	/**
 	 * @dev Receive taker from `from_` .
 	 */
-	function takerFrom(
-		address from_,
-		uint256 takerId_,
-		address maker_,
-		uint256 makerId_
-	) external;
+	function takerFrom(address from_, uint256 takerId_) external;
 }
