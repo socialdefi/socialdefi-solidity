@@ -15,7 +15,7 @@ abstract contract Taker is ITaker {
 		uint256 makerId;
 		uint256 requestSkuQuantityOrId;
 		uint256 requestPriceQuantityOrId;
-		IMaker.Maker metadata;
+		IMaker.Metadata metadata;
 	}
 	// using Counters
 	using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -52,12 +52,7 @@ abstract contract Taker is ITaker {
 
 	function _nextId() internal virtual returns (uint256);
 
-	function _makerRestraint(IMaker.Maker memory maker_) internal virtual {
-		require(maker_.sku != address(0), 'MAKER: SKU address is zero');
-		require(maker_.skuQuantityOrId > 0, 'MAKER: skuQuantityOrId > 0');
-		require(maker_.paymentCurrency != address(0), 'MAKER: payment currency address is zero');
-		require(maker_.priceQuantityOrId > 0, 'MAKER: priceQuantityOrId > 0');
-	}
+	function _makerRestraint(IMaker.Metadata memory maker_) internal virtual;
 
 	/**
 	 * @dev deposit asset from `from_` address.
@@ -86,7 +81,7 @@ abstract contract Taker is ITaker {
 	) internal virtual;
 
 	function _trySwap(
-		IMaker.Maker memory metadata,
+		IMaker.Metadata memory metadata,
 		uint256 sentSkuQuantityOrId_,
 		uint256 receivedPaymentQuantityOrId_,
 		uint256 requestSkuQuantityOrId_,
@@ -130,7 +125,7 @@ abstract contract Taker is ITaker {
 		require(requestSkuQuantityOrId_ > 0, 'TAKER: requestSkuQuantityOrId_ > 0');
 
 		(
-			IMaker.Maker memory metadata_,
+			IMaker.Metadata memory metadata_,
 			uint256 sentSkuQuantityOrId_,
 			uint256 receivedPaymentQuantityOrId_,
 			address dex_
@@ -181,7 +176,7 @@ abstract contract Taker is ITaker {
 
 		TakerContext storage taker_ = _takers[takerId_];
 
-		IMaker.Maker storage maker_ = taker_.metadata;
+		IMaker.Metadata storage maker_ = taker_.metadata;
 
 		uint256 skuWithdraw = _receivedSkuQuantityOrIds[takerId_];
 
@@ -234,7 +229,7 @@ abstract contract Taker is ITaker {
 			'TAKER: responsePriceQuantityOrId_ overflow'
 		);
 
-		IMaker.Maker storage metadata_ = taker_.metadata;
+		IMaker.Metadata storage metadata_ = taker_.metadata;
 
 		_deposit(
 			taker_.maker,

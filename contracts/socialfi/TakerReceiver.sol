@@ -14,14 +14,14 @@ abstract contract TakerReceiver is ITakerReceiver {
 		view
 		virtual
 		returns (
-			IMaker.Maker memory makerMetadata_,
+			IMaker.Metadata memory makerMetadata_,
 			uint256 sentSkuQuantityOrId_,
 			uint256 receivedPaymentQuantityOrId_,
 			address dex_
 		);
 
 	function _trySwap(
-		IMaker.Maker memory metadata,
+		IMaker.Metadata memory metadata,
 		uint256 sentSkuQuantityOrId_,
 		uint256 receivedPaymentQuantityOrId_,
 		uint256 requestSkuQuantityOrId_,
@@ -33,14 +33,14 @@ abstract contract TakerReceiver is ITakerReceiver {
 		returns (uint256 suggestSkuQuantityOrId_, uint256 suggestPriceQuantityOrId_);
 
 	function _beginInblockSwap(
-		IMaker.Maker memory metadata,
+		IMaker.Metadata memory metadata,
 		address to_,
 		uint256 approveSkuQuantityOrId_,
 		uint256 expectPriceQuantityOrId_
 	) internal virtual returns (uint256 skuQuantityOrId_, uint256 priceQuantityOrId_);
 
 	function _endInblockSwap(
-		IMaker.Maker memory metadata,
+		IMaker.Metadata memory metadata,
 		address to_,
 		uint256 approveSkuQuantityOrId_,
 		uint256 expectPriceQuantityOrId_
@@ -60,7 +60,7 @@ abstract contract TakerReceiver is ITakerReceiver {
 		address to_,
 		uint256 takerId_,
 		uint256 makerId_,
-		IMaker.Maker memory makerMetadata_,
+		IMaker.Metadata memory makerMetadata_,
 		uint256 sentSkuQuantityOrId_,
 		uint256 receivedPaymentQuantityOrId_,
 		uint256 requestSkuQuantityOrId_,
@@ -108,7 +108,7 @@ abstract contract TakerReceiver is ITakerReceiver {
 		) = ITaker(from_).takerMetadata(takerId_);
 
 		(
-			IMaker.Maker memory makerMetadata_,
+			IMaker.Metadata memory makerMetadata_,
 			uint256 sentSkuQuantityOrId_,
 			uint256 receivedPaymentQuantityOrId_,
 			address dex_

@@ -12,7 +12,7 @@ abstract contract Maker is IMaker {
 	using EnumerableSet for EnumerableSet.Bytes32Set;
 
 	/// Mapping maker id to Maker struct.
-	mapping(uint256 => Maker) private _makers;
+	mapping(uint256 => Metadata) private _makers;
 
 	/// Maker id set
 	EnumerableSet.Bytes32Set private _makerIds;
@@ -42,7 +42,7 @@ abstract contract Maker is IMaker {
 		external
 		view
 		returns (
-			Maker memory maker_,
+			Metadata memory maker_,
 			uint256 sentSkuQuantityOrId_,
 			uint256 receivedPaymentQuantityOrId_,
 			address dex_
@@ -97,12 +97,7 @@ abstract contract Maker is IMaker {
 	 */
 	function _nextId() internal virtual returns (uint256);
 
-	function _makerRestraint(Maker memory maker_) internal virtual {
-		require(maker_.sku != address(0), 'MAKER: SKU address is zero');
-		require(maker_.skuQuantityOrId > 0, 'MAKER: skuQuantityOrId > 0');
-		require(maker_.paymentCurrency != address(0), 'MAKER: payment currency address is zero');
-		require(maker_.priceQuantityOrId > 0, 'MAKER: priceQuantityOrId > 0');
-	}
+	function _makerRestraint(IMaker.Metadata memory maker_) internal virtual;
 
 	/**
 	 * @dev deposit asset from `from_` address.
@@ -135,7 +130,7 @@ abstract contract Maker is IMaker {
 	 */
 	function _mintMaker(
 		address depsoitFrom_,
-		Maker memory maker_,
+		Metadata memory maker_,
 		address dex_
 	) internal returns (uint256 makerId_) {
 		_makerRestraint(maker_);
@@ -162,7 +157,7 @@ abstract contract Maker is IMaker {
 	function _closeMaker(address withdrawTo_, uint256 makerId_) internal {
 		_requireMakerId(makerId_);
 
-		Maker storage maker_ = _makers[makerId_];
+		Metadata storage maker_ = _makers[makerId_];
 
 		uint256 skuWithdraw = maker_.priceQuantityOrId - _sentSkuQuantityOrIds[makerId_];
 

@@ -7,7 +7,7 @@ import '@openzeppelin/contracts/utils/introspection/IERC165.sol';
  *
  */
 interface IMaker {
-	struct Maker {
+	struct Metadata {
 		address sku;
 		uint256 skuQuantityOrId;
 		address paymentCurrency;
@@ -46,7 +46,7 @@ interface IMaker {
 		external
 		view
 		returns (
-			Maker memory maker_,
+			Metadata memory maker_,
 			uint256 sentSkuQuantityOrId_,
 			uint256 receivedPaymentQuantityOrId_,
 			address dex_
@@ -62,7 +62,7 @@ interface IMaker {
 	/**
 	 * @dev Mint new maker order.
 	 */
-	function mintMaker(Maker memory maker_, address dex_)
+	function mintMaker(Metadata memory maker_, address dex_)
 		external
 		payable
 		returns (uint256 makerId_);
