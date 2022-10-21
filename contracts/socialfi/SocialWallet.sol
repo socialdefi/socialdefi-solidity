@@ -4,11 +4,9 @@ pragma solidity ^0.8.0;
 import './Maker.sol';
 import './Taker.sol';
 import './TakerReceiver.sol';
+import './ISocialWallet.sol';
 
-import '@openzeppelin/contracts/utils/introspection/IERC165.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
-
-contract PersonalWallet is Maker, Taker, TakerReceiver, IERC165, Ownable {
+abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 	///////////////////////////////////////////////////////////////////////////////////
 	// internal methods
 	//
@@ -48,9 +46,9 @@ contract PersonalWallet is Maker, Taker, TakerReceiver, IERC165, Ownable {
 	)
 		internal
 		view
+		virtual
 		override(Taker, TakerReceiver)
-		returns (uint256 suggestSkuQuantityOrId_, uint256 suggestPriceQuantityOrId_)
-	{}
+		returns (uint256 suggestSkuQuantityOrId_, uint256 suggestPriceQuantityOrId_);
 
 	function _makerMetadata(address maker_, uint256 makerId_)
 		internal
@@ -89,41 +87,13 @@ contract PersonalWallet is Maker, Taker, TakerReceiver, IERC165, Ownable {
 	//
 	///////////////////////////////////////////////////////////////////////////////////
 
+	/**
+	 * @dev  IERC165#supportsInterface implementation
+	 */
 	function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
 		return
 			type(IMaker).interfaceId == interfaceId ||
 			type(ITaker).interfaceId == interfaceId ||
 			type(ITakerReceiver).interfaceId == interfaceId;
 	}
-
-	///////////////////////////////////////////////////////////////////////////////////
-	// only owner call methods
-	//
-	///////////////////////////////////////////////////////////////////////////////////
-
-	function mintTaker(
-		address depsoitFrom_,
-		address maker_,
-		uint256 makerId_,
-		uint256 requestSkuQuantityOrId_,
-		uint256 requestPriceQuantityOrId_
-	) external payable override onlyOwner returns (uint256 takerId_) {}
-
-	function closeTaker(uint256 takerId_) external override onlyOwner {}
-
-	/**
-	 * @dev Mint new maker order.
-	 */
-	function mintMaker(IMaker.Metadata memory maker_, address dex_)
-		external
-		payable
-		override
-		onlyOwner
-		returns (uint256 makerId_)
-	{}
-
-	/**
-	 * @dev Close maker.
-	 */
-	function closeMaker(uint256 makerId_) external override onlyOwner {}
 }

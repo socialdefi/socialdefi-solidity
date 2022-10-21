@@ -58,17 +58,4 @@ interface IMaker {
 	 * @param makerId_ approve target maker id.
 	 */
 	function approveDex(uint256 makerId_, address to_) external payable;
-
-	/**
-	 * @dev Mint new maker order.
-	 */
-	function mintMaker(Metadata memory maker_, address dex_)
-		external
-		payable
-		returns (uint256 makerId_);
-
-	/**
-	 * @dev Close maker.
-	 */
-	function closeMaker(uint256 makerId_) external;
 }
