@@ -39,7 +39,7 @@ abstract contract Maker is IMaker {
 	}
 
 	function makerMetadata(uint256 makerId_)
-		external
+		public
 		view
 		returns (
 			Metadata memory maker_,
@@ -54,6 +54,34 @@ abstract contract Maker is IMaker {
 		sentSkuQuantityOrId_ = _sentSkuQuantityOrIds[makerId_];
 		receivedPaymentQuantityOrId_ = _receivedPaymentQuantityOrIds[makerId_];
 		dex_ = _approvedDexes[makerId_];
+	}
+
+	function _updateMaker(
+		uint256 makerId_,
+		uint256 sentSkuQuantityOrId_,
+		uint256 receivedPaymentQuantityOrId_
+	) internal virtual {
+		_requireMakerId(makerId_);
+
+		Metadata storage maker_ = _makers[makerId_];
+
+		if (maker_.skuType != 0) {
+			require(
+				_sentSkuQuantityOrIds[makerId_] == 0,
+				'MAKER: sku is erc721 token does not support partial deal'
+			);
+		}
+
+		if (maker_.paymentCurrencyType != 0) {
+			require(
+				_receivedPaymentQuantityOrIds[makerId_] == 0,
+				'MAKER: payment currency is erc721 token does not support partial deal'
+			);
+		}
+
+		_sentSkuQuantityOrIds[makerId_] += sentSkuQuantityOrId_;
+
+		_receivedPaymentQuantityOrIds[makerId_] += receivedPaymentQuantityOrId_;
 	}
 
 	function _listToDex(

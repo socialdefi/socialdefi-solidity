@@ -4,7 +4,7 @@ import '@openzeppelin/contracts/utils/introspection/IERC165.sol';
 
 import './IMaker.sol';
 
-interface ISocialWallet {
+interface ISocialWallet is IERC165 {
 	/**
 	 * @dev Mint new maker order.
 	 */
