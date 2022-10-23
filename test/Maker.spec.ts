@@ -6,7 +6,7 @@ import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { Deployer } from '../scripts';
-import { PersonalWallet } from '../src/types';
+import { PersonalWallet, PersonalWallet__factory } from '../src/types';
 
 import { expect } from 'chai';
 
@@ -34,5 +34,11 @@ describe('Peronsal wallet contract tests', async () => {
 		await expect(wallet.connect(s2).transferOwnership(s3.address)).to.be.rejectedWith(
 			'Ownable: caller is not the owner',
 		);
+	});
+
+	it('External / public methods check', async () => {
+		const wallet = PersonalWallet__factory.createInterface();
+
+		expect(Object.keys(wallet.functions).length).to.be.equal(18);
 	});
 });
