@@ -109,3 +109,5 @@ artifacts
 cache
 
 node_modules
+
+src/types
