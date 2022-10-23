@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import './Maker.sol';
 import './Taker.sol';
+import '../token/IWETH.sol';
 import './TakerReceiver.sol';
 import './ISocialWallet.sol';
 
@@ -10,13 +11,28 @@ import '@openzeppelin/contracts/utils/Counters.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 	using SafeERC20 for IERC20;
 
+	using EnumerableSet for EnumerableSet.Bytes32Set;
+
 	using Counters for Counters.Counter;
 
 	Counters.Counter private _idgen;
+
+	address public immutable _WETH;
+
+	mapping(address => uint256) private _erc20FrozenTokens;
+
+	mapping(address => EnumerableSet.Bytes32Set) private _erc721FrozenTokens;
+
+	constructor(address WETH_) {
+		require(WETH_ != address(0), 'SW: WETH_ must be provided');
+
+		_WETH = WETH_;
+	}
 
 	///////////////////////////////////////////////////////////////////////////////////
 	// internal methods
@@ -42,7 +58,48 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 		uint256 valueOrId_,
 		bool erc20_,
 		bool fromETH_
-	) internal override(Maker, Taker) returns (uint256 depositETH_) {}
+	) internal override(Maker, Taker) returns (uint256 depositETH_) {
+		require(from_ != address(0), 'SW: invalid param _deposit#from_');
+		require(asset_ != address(0), 'SW: invalid param _deposit#asset_');
+		require(valueOrId_ > 0, 'SW: invalid param _deposit#valueOrId_ ');
+
+		if (asset_ == _WETH) {
+			require(erc20_, 'FZWT: WETH is erc20 token');
+
+			if (fromETH_) {
+				require(
+					msg.value >= valueOrId_,
+					'FZWT: deposit native token with insufficent payment.'
+				);
+				// native token deposit, try convert to WETH token.
+
+				// WETH deposit check
+				uint256 balance = IERC20(asset_).balanceOf(address(this));
+
+				IWETH(asset_).deposit{ value: valueOrId_ }();
+
+				require(
+					(balance + valueOrId_) == IERC20(asset_).balanceOf(address(this)),
+					'FZWT: WETH deposit failed'
+				);
+
+				depositETH_ = valueOrId_;
+
+				_erc20FrozenTokens[asset_] += valueOrId_;
+
+				return depositETH_;
+			}
+		}
+
+		if (erc20_) {
+			IERC20(asset_).safeTransferFrom(from_, address(this), valueOrId_);
+
+			_erc20FrozenTokens[asset_] += valueOrId_;
+		} else {
+			IERC721(asset_).safeTransferFrom(from_, address(this), valueOrId_);
+			_erc721FrozenTokens[asset_].add(bytes32(valueOrId_));
+		}
+	}
 
 	function _withdraw(
 		address to_,
@@ -50,7 +107,56 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 		uint256 valueOrId_,
 		bool erc20_,
 		bool toETH_
-	) internal override(Maker, Taker) {}
+	) internal override(Maker, Taker) {
+		require(to_ != address(0), 'SW: invalid param _withdraw#recipent_');
+		require(asset_ != address(0), 'SW: invalid param _withdraw#asset_');
+		require(valueOrId_ > 0, 'SW: invalid param _withdraw#valueOrId_ ');
+
+		if (asset_ == _WETH) {
+			require(erc20_, 'FZWT: WETH is erc20 token');
+
+			if (toETH_) {
+				require(
+					IERC20(asset_).balanceOf(address(this)) >=
+						(valueOrId_ + _erc20FrozenTokens[asset_]),
+					'FZWT: insufficent WETH to withdraw'
+				);
+				// native token deposit, try convert to WETH token.
+
+				// WETH deposit check
+				uint256 balance = address(this).balance;
+
+				IWETH(asset_).withdraw(valueOrId_);
+
+				require(
+					(balance + valueOrId_) == address(this).balance,
+					'FZWT: WETH withdraw failed'
+				);
+
+				payable(to_).transfer(valueOrId_);
+
+				return;
+			}
+		}
+
+		if (erc20_) {
+			require(
+				IERC20(asset_).balanceOf(address(this)) >=
+					(valueOrId_ + _erc20FrozenTokens[asset_]),
+				'FZWT: insufficent Token to withdraw'
+			);
+
+			IERC20(asset_).safeTransfer(to_, valueOrId_);
+		} else {
+			require(
+				IERC721(asset_).ownerOf(valueOrId_) == address(this) &&
+					!_erc721FrozenTokens[asset_].contains(bytes32(valueOrId_)),
+				'FZWT: not own erc721 token or freezen'
+			);
+
+			IERC721(asset_).safeTransferFrom(address(this), to_, valueOrId_);
+		}
+	}
 
 	function _makerMetadata(address maker_, uint256 makerId_)
 		internal
@@ -69,11 +175,24 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 	}
 
 	function _updateMaker(
+		IMaker.Metadata memory metadata_,
 		uint256 makerId_,
 		uint256 sentSkuQuantityOrId_,
 		uint256 receivedPaymentQuantityOrId_
-	) internal override(Maker, TakerReceiver) {
+	) internal override(TakerReceiver) {
 		Maker._updateMaker(makerId_, sentSkuQuantityOrId_, receivedPaymentQuantityOrId_);
+
+		if (metadata_.skuType == 0) {
+			_erc20FrozenTokens[metadata_.sku] -= sentSkuQuantityOrId_;
+		} else {
+			_erc721FrozenTokens[metadata_.sku].remove(bytes32(sentSkuQuantityOrId_));
+		}
+
+		if (metadata_.paymentCurrencyType == 0) {
+			_erc20FrozenTokens[metadata_.sku] += receivedPaymentQuantityOrId_;
+		} else {
+			_erc721FrozenTokens[metadata_.paymentCurrency].add(bytes32(sentSkuQuantityOrId_));
+		}
 	}
 
 	function _trySwap(

@@ -47,6 +47,7 @@ abstract contract TakerReceiver is ITakerReceiver {
 	) internal virtual returns (uint256 skuQuantityOrId_, uint256 priceQuantityOrId_);
 
 	function _updateMaker(
+		IMaker.Metadata memory metadata_,
 		uint256 makerId_,
 		uint256 sentSkuQuantityOrId_,
 		uint256 receivedPaymentQuantityOrId_
@@ -93,7 +94,7 @@ abstract contract TakerReceiver is ITakerReceiver {
 		uint256 swapSkuQuantityOrId_ = beginSkuQuantityOrId_ - endSkuQuantityOrId_;
 		uint256 swapPaymentQuantityOrId_ = endPriceQuantityOrId_ - beginPriceQuantityOrId_;
 
-		_updateMaker(makerId_, swapSkuQuantityOrId_, swapPaymentQuantityOrId_);
+		_updateMaker(makerMetadata_, makerId_, swapSkuQuantityOrId_, swapPaymentQuantityOrId_);
 	}
 
 	/**

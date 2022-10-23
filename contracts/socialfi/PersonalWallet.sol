@@ -5,6 +5,8 @@ import './SocialWallet.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
 contract PersonalWallet is SocialWallet, Ownable {
+	constructor(address WETH_) SocialWallet(WETH_) {}
+
 	/**
 	 * @dev Mint new maker order.
 	 */

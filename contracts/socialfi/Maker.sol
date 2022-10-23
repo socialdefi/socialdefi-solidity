@@ -70,14 +70,16 @@ abstract contract Maker is IMaker {
 
 		if (maker_.skuType != 0) {
 			require(
-				_sentSkuQuantityOrIds[makerId_] == 0,
+				_sentSkuQuantityOrIds[makerId_] == 0 &&
+					maker_.skuQuantityOrId == sentSkuQuantityOrId_,
 				'MAKER: sku is erc721 token does not support partial deal'
 			);
 		}
 
 		if (maker_.paymentCurrencyType != 0) {
 			require(
-				_receivedPaymentQuantityOrIds[makerId_] == 0,
+				_receivedPaymentQuantityOrIds[makerId_] == 0 &&
+					maker_.priceQuantityOrId == receivedPaymentQuantityOrId_,
 				'MAKER: payment currency is erc721 token does not support partial deal'
 			);
 		}

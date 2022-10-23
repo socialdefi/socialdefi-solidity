@@ -6,11 +6,15 @@ import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { Deployer } from '../scripts';
+import { PersonalWallet } from '../src/types';
 
-describe('Social wallet / Personal wallet maker tests', async () => {
+import { expect } from 'chai';
+
+describe('Peronsal wallet contract tests', async () => {
 	let s1: SignerWithAddress;
 	let s2: SignerWithAddress;
 	let s3: SignerWithAddress;
+	let wallet: PersonalWallet;
 
 	let WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 
@@ -18,5 +22,17 @@ describe('Social wallet / Personal wallet maker tests', async () => {
 		[s1, s2, s3] = await ethers.getSigners();
 
 		const deployer = new Deployer();
+
+		wallet = await deployer.deploy('PersonalWallet', [WETH]);
+	});
+
+	it('Check ownable', async () => {
+		expect(await wallet.owner()).to.be.equal(s1.address);
+
+		// The following methods should not ever be called successfully
+
+		await expect(wallet.connect(s2).transferOwnership(s3.address)).to.be.rejectedWith(
+			'Ownable: caller is not the owner',
+		);
 	});
 });
