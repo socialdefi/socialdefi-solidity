@@ -88,7 +88,51 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 		virtual
 		override(Taker, TakerReceiver)
 		returns (uint256 suggestSkuQuantityOrId_, uint256 suggestPriceQuantityOrId_)
-	{}
+	{
+		require(requestSkuQuantityOrId_ > 0, 'SW: inblock swap requestSkuQuantityOrId_ must > 0');
+		require(
+			requestPriceQuantityOrId_ > 0,
+			'SW: inblock swap requestPriceQuantityOrId_ must > 0'
+		);
+
+		if (metadata.skuType == 0 && metadata.paymentCurrencyType == 0) {
+			suggestSkuQuantityOrId_ = metadata.skuQuantityOrId - sentSkuQuantityOrId_;
+
+			if (requestSkuQuantityOrId_ < suggestSkuQuantityOrId_) {
+				suggestSkuQuantityOrId_ = requestSkuQuantityOrId_;
+			}
+
+			suggestPriceQuantityOrId_ =
+				(metadata.priceQuantityOrId * suggestSkuQuantityOrId_) /
+				metadata.skuQuantityOrId;
+
+			require(
+				suggestPriceQuantityOrId_ >= requestPriceQuantityOrId_,
+				'SW: insufficent requestPriceQuantityOrId_'
+			);
+		} else {
+			require(
+				sentSkuQuantityOrId_ == 0,
+				'SW: trading pair including erc721 token does not support partial deal'
+			);
+			require(
+				receivedPaymentQuantityOrId_ == 0,
+				'SW:  trading pair including erc721 token does not support partial deal'
+			);
+
+			suggestSkuQuantityOrId_ = metadata.skuQuantityOrId;
+			suggestPriceQuantityOrId_ = metadata.priceQuantityOrId;
+
+			require(
+				requestSkuQuantityOrId_ == suggestSkuQuantityOrId_,
+				'SW: trading pair including erc721 token does not support partial deal'
+			);
+			require(
+				requestPriceQuantityOrId_ == suggestPriceQuantityOrId_,
+				'SW:  trading pair including erc721 token does not support partial deal'
+			);
+		}
+	}
 
 	function _beginInblockSwap(
 		IMaker.Metadata memory metadata,

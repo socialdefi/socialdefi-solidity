@@ -63,6 +63,9 @@ abstract contract Maker is IMaker {
 	) internal virtual {
 		_requireMakerId(makerId_);
 
+		require(sentSkuQuantityOrId_ > 0, 'SW: sentSkuQuantityOrId_ must > 0');
+		require(receivedPaymentQuantityOrId_ > 0, 'SW: receivedPaymentQuantityOrId_ must > 0');
+
 		Metadata storage maker_ = _makers[makerId_];
 
 		if (maker_.skuType != 0) {

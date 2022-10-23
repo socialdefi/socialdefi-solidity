@@ -22,7 +22,6 @@ interface ISocialWallet is IERC165 {
 	 * @dev mint new taker order.
 	 */
 	function mintTaker(
-		address depsoitFrom_,
 		address maker_,
 		uint256 makerId_,
 		uint256 requestSkuQuantityOrId_,
