@@ -4,6 +4,7 @@ import { HardhatUserConfig } from 'hardhat/config';
 import '@typechain/hardhat';
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-ganache';
+import '@nomicfoundation/hardhat-chai-matchers';
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -18,15 +19,14 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 const config: HardhatUserConfig = {
 	networks: {
 		hardhat: {
-			mining: {
-				auto: true,
-				interval: 1000,
-			},
+			// mining: {
+			// 	interval: 200,
+			// },
 			forking: {
 				url: process.env.FORKING_URL as string,
 				blockNumber: 15788498,
 			},
-			// loggingEnabled: true,
+			loggingEnabled: true,
 		},
 	},
 	solidity: {

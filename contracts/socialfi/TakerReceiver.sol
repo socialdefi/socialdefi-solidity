@@ -9,6 +9,8 @@ import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import '@openzeppelin/contracts/utils/introspection/IERC165.sol';
 
 abstract contract TakerReceiver is ITakerReceiver {
+	uint256 private _takerFromReentrancyGuard;
+
 	function _makerMetadata(address maker_, uint256 makerId_)
 		internal
 		view
@@ -47,7 +49,6 @@ abstract contract TakerReceiver is ITakerReceiver {
 	) internal virtual returns (uint256 skuQuantityOrId_, uint256 priceQuantityOrId_);
 
 	function _updateMaker(
-		IMaker.Metadata memory metadata_,
 		uint256 makerId_,
 		uint256 sentSkuQuantityOrId_,
 		uint256 receivedPaymentQuantityOrId_
@@ -57,6 +58,9 @@ abstract contract TakerReceiver is ITakerReceiver {
 		return true;
 	}
 
+	/**
+	 * @dev Try swap assets and check result
+	 */
 	function _swap(
 		address to_,
 		uint256 takerId_,
@@ -94,13 +98,28 @@ abstract contract TakerReceiver is ITakerReceiver {
 		uint256 swapSkuQuantityOrId_ = beginSkuQuantityOrId_ - endSkuQuantityOrId_;
 		uint256 swapPaymentQuantityOrId_ = endPriceQuantityOrId_ - beginPriceQuantityOrId_;
 
-		_updateMaker(makerMetadata_, makerId_, swapSkuQuantityOrId_, swapPaymentQuantityOrId_);
+		// Update actual swap amount.
+		_updateMaker(makerId_, swapSkuQuantityOrId_, swapPaymentQuantityOrId_);
+	}
+
+	/**
+	 * @dev takerFrom method reentrancy guard.
+	 */
+	modifier nonTakerFromReentrant(uint256 takerId_) {
+		require(_takerFromReentrancyGuard == 0, 'TAKER: takerFrom, reentrancy call');
+		_takerFromReentrancyGuard = takerId_;
+		_;
+		_takerFromReentrancyGuard = 0;
 	}
 
 	/**
 	 * @dev Receive taker from `from_` .
 	 */
-	function takerFrom(address from_, uint256 takerId_) external override {
+	function takerFrom(address from_, uint256 takerId_)
+		external
+		override
+		nonTakerFromReentrant(takerId_)
+	{
 		(
 			address maker_,
 			uint256 makerId_,

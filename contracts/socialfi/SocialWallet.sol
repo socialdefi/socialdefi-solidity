@@ -7,6 +7,8 @@ import '../token/IWETH.sol';
 import './TakerReceiver.sol';
 import './ISocialWallet.sol';
 
+import 'hardhat/console.sol';
+
 import '@openzeppelin/contracts/utils/Counters.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
@@ -14,7 +16,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import '@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol';
 
-abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
+abstract contract SocialWallet is ERC721Holder, Maker, Taker, TakerReceiver, ISocialWallet {
 	using SafeERC20 for IERC20;
 
 	using EnumerableSet for EnumerableSet.Bytes32Set;
@@ -24,10 +26,6 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 	Counters.Counter private _idgen;
 
 	address public immutable _WETH;
-
-	mapping(address => uint256) private _erc20FrozenTokens;
-
-	mapping(address => EnumerableSet.Bytes32Set) private _erc721FrozenTokens;
 
 	constructor(address WETH_) {
 		require(WETH_ != address(0), 'SW: WETH_ must be provided');
@@ -46,11 +44,25 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 		return _idgen.current();
 	}
 
-	function _makerRestraint(IMaker.Metadata memory maker_) internal pure override(Maker, Taker) {
-		require(maker_.sku != address(0), 'MAKER: SKU address is zero');
-		require(maker_.skuQuantityOrId > 0, 'MAKER: skuQuantityOrId > 0');
-		require(maker_.paymentCurrency != address(0), 'MAKER: payment currency address is zero');
-		require(maker_.priceQuantityOrId > 0, 'MAKER: priceQuantityOrId > 0');
+	function _makerRestraint(IMaker.Metadata memory maker_) internal view override(Maker, Taker) {
+		require(maker_.sku != address(0), 'SW: SKU address is zero');
+		require(maker_.skuQuantityOrId > 0, 'SW: skuQuantityOrId > 0');
+		require(maker_.paymentCurrency != address(0), 'SW: payment currency address is zero');
+		require(maker_.priceQuantityOrId > 0, 'SW: priceQuantityOrId > 0');
+
+		if (maker_.skuType != 0) {
+			require(
+				IERC165(maker_.sku).supportsInterface(type(IERC721).interfaceId),
+				'SW: check maker sku type(erc721) failed'
+			);
+		}
+
+		if (maker_.paymentCurrencyType != 0) {
+			require(
+				IERC165(maker_.sku).supportsInterface(type(IERC721).interfaceId),
+				'SW: check maker payment currency type(erc721) failed'
+			);
+		}
 	}
 
 	function _deposit(
@@ -86,19 +98,14 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 
 				depositETH_ = valueOrId_;
 
-				_erc20FrozenTokens[asset_] += valueOrId_;
-
 				return depositETH_;
 			}
 		}
 
 		if (erc20_) {
 			IERC20(asset_).safeTransferFrom(from_, address(this), valueOrId_);
-
-			_erc20FrozenTokens[asset_] += valueOrId_;
 		} else {
 			IERC721(asset_).safeTransferFrom(from_, address(this), valueOrId_);
-			_erc721FrozenTokens[asset_].add(bytes32(valueOrId_));
 		}
 	}
 
@@ -117,11 +124,6 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 			require(erc20_, 'FZWT: WETH is erc20 token');
 
 			if (toETH_) {
-				require(
-					IERC20(asset_).balanceOf(address(this)) >=
-						(valueOrId_ + _erc20FrozenTokens[asset_]),
-					'FZWT: insufficent WETH to withdraw'
-				);
 				// native token deposit, try convert to WETH token.
 
 				// WETH deposit check
@@ -141,20 +143,8 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 		}
 
 		if (erc20_) {
-			require(
-				IERC20(asset_).balanceOf(address(this)) >=
-					(valueOrId_ + _erc20FrozenTokens[asset_]),
-				'FZWT: insufficent Token to withdraw'
-			);
-
 			IERC20(asset_).safeTransfer(to_, valueOrId_);
 		} else {
-			require(
-				IERC721(asset_).ownerOf(valueOrId_) == address(this) &&
-					!_erc721FrozenTokens[asset_].contains(bytes32(valueOrId_)),
-				'FZWT: not own erc721 token or freezen'
-			);
-
 			IERC721(asset_).safeTransferFrom(address(this), to_, valueOrId_);
 		}
 	}
@@ -176,24 +166,11 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 	}
 
 	function _updateMaker(
-		IMaker.Metadata memory metadata_,
 		uint256 makerId_,
 		uint256 sentSkuQuantityOrId_,
 		uint256 receivedPaymentQuantityOrId_
-	) internal override(TakerReceiver) {
+	) internal override(Maker, TakerReceiver) {
 		Maker._updateMaker(makerId_, sentSkuQuantityOrId_, receivedPaymentQuantityOrId_);
-
-		if (metadata_.skuType == 0) {
-			_erc20FrozenTokens[metadata_.sku] -= sentSkuQuantityOrId_;
-		} else {
-			_erc721FrozenTokens[metadata_.sku].remove(bytes32(sentSkuQuantityOrId_));
-		}
-
-		if (metadata_.paymentCurrencyType == 0) {
-			_erc20FrozenTokens[metadata_.sku] += receivedPaymentQuantityOrId_;
-		} else {
-			_erc721FrozenTokens[metadata_.paymentCurrency].add(bytes32(sentSkuQuantityOrId_));
-		}
 	}
 
 	function _trySwap(
@@ -303,7 +280,6 @@ abstract contract SocialWallet is Maker, Taker, TakerReceiver, ISocialWallet {
 			if (IERC721(metadata.sku).ownerOf(approveSkuQuantityOrId_) == address(this)) {
 				skuQuantityOrId_ = approveSkuQuantityOrId_;
 			} else {
-				IERC721(metadata.sku).approve(address(0), approveSkuQuantityOrId_);
 				skuQuantityOrId_ = 0;
 			}
 		}

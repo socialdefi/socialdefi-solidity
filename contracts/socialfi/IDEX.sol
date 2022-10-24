@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GNU
 pragma solidity ^0.8.0;
+
 import './ITakerReceiver.sol';
 
 interface IDEX is ITakerReceiver {

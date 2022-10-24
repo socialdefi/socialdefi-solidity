@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import './IDEX.sol';
 import './IMaker.sol';
 
+import 'hardhat/console.sol';
+
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import '@openzeppelin/contracts/utils/introspection/IERC165.sol';
 
@@ -102,6 +104,8 @@ abstract contract Maker is IMaker {
 		require(fee <= fee_, 'MAKER: list dex fee insufficent');
 
 		IDEX(to_).list{ value: fee_ }(makerId_);
+
+		emit List(address(this), makerId_, to_);
 	}
 
 	function _delistFromDex(uint256 makerId_, address to_) private {
@@ -109,6 +113,8 @@ abstract contract Maker is IMaker {
 		require(to_ != address(0), 'MAKER: list to dex address is zero');
 
 		IDEX(to_).delist(makerId_);
+
+		emit Delist(address(this), makerId_, to_);
 	}
 
 	function approveDex(uint256 makerId_, address to_) public payable override {
@@ -118,10 +124,12 @@ abstract contract Maker is IMaker {
 
 		if (currentDex != address(0)) {
 			_delistFromDex(makerId_, currentDex);
+			delete _approvedDexes[makerId_];
 		}
 
 		if (to_ != address(0)) {
 			_listToDex(makerId_, to_, msg.value);
+			_approvedDexes[makerId_] = to_;
 		}
 	}
 
@@ -179,6 +187,7 @@ abstract contract Maker is IMaker {
 
 		if (dex_ != address(0)) {
 			_listToDex(makerId_, dex_, fee_);
+			_approvedDexes[makerId_] = dex_;
 		}
 
 		emit MakerMint(address(this), makerId_, dex_);
@@ -190,26 +199,40 @@ abstract contract Maker is IMaker {
 	function _closeMaker(address withdrawTo_, uint256 makerId_) internal {
 		_requireMakerId(makerId_);
 
-		Metadata storage maker_ = _makers[makerId_];
+		Metadata memory maker_ = _makers[makerId_];
 
-		uint256 skuWithdraw = maker_.priceQuantityOrId - _sentSkuQuantityOrIds[makerId_];
-
-		_withdraw(withdrawTo_, maker_.sku, skuWithdraw, maker_.skuType == 0, true);
+		uint256 skuWithdraw = maker_.skuQuantityOrId - _sentSkuQuantityOrIds[makerId_];
 
 		uint256 paymentWithdraw = _receivedPaymentQuantityOrIds[makerId_];
 
-		_withdraw(
-			withdrawTo_,
-			maker_.paymentCurrency,
-			paymentWithdraw,
-			maker_.paymentCurrencyType == 0,
-			true
-		);
+		address dex = _approvedDexes[makerId_];
 
 		delete _makers[makerId_];
+		delete _sentSkuQuantityOrIds[makerId_];
+		delete _receivedPaymentQuantityOrIds[makerId_];
+		delete _approvedDexes[makerId_];
+
 		_makerIds.remove(bytes32(makerId_));
-		_sentSkuQuantityOrIds[makerId_];
-		_receivedPaymentQuantityOrIds[makerId_];
+
+		// protect from reentry attack.
+
+		if (skuWithdraw > 0) {
+			_withdraw(withdrawTo_, maker_.sku, skuWithdraw, maker_.skuType == 0, true);
+		}
+
+		if (paymentWithdraw > 0) {
+			_withdraw(
+				withdrawTo_,
+				maker_.paymentCurrency,
+				paymentWithdraw,
+				maker_.paymentCurrencyType == 0,
+				true
+			);
+		}
+
+		if (dex != address(0)) {
+			_delistFromDex(makerId_, dex);
+		}
 
 		emit MakerBurn(address(this), makerId_);
 	}

@@ -29,6 +29,10 @@ interface IMaker {
 		uint256 settlePaymentOrId_
 	);
 
+	event List(address indexed from_, uint256 indexed tokenId_, address indexed to_);
+
+	event Delist(address indexed from_, uint256 indexed tokenId_, address indexed to_);
+
 	/**
 	 * @dev Returns total supply of maker order opening.
 	 */

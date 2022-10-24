@@ -32,6 +32,8 @@ abstract contract Taker is ITaker {
 	/// mapping maker id to received sku quantity or id
 	mapping(uint256 => uint256) private _receivedSkuQuantityOrIds;
 
+	uint256 private _takerCallbackReentrancyGuard;
+
 	/**
 	 * @dev Returns total supply of taker order opening.
 	 */
@@ -165,7 +167,11 @@ abstract contract Taker is ITaker {
 
 		emit TakerMint(address(this), takerId_, suggestSkuQuantityOrId_, suggestPriceQuantityOrId_);
 
-		ITakerReceiver(dex_).takerFrom(address(this), takerId_);
+		if (dex_ != address(0)) {
+			ITakerReceiver(dex_).takerFrom(address(this), takerId_);
+		} else {
+			ITakerReceiver(maker_).takerFrom(address(this), takerId_);
+		}
 	}
 
 	/**
@@ -174,41 +180,53 @@ abstract contract Taker is ITaker {
 	function _closeTaker(address withdrawTo_, uint256 takerId_) internal virtual {
 		_requireTakerId(takerId_);
 
-		TakerContext storage taker_ = _takers[takerId_];
+		TakerContext memory taker_ = _takers[takerId_];
 
-		IMaker.Metadata storage maker_ = taker_.metadata;
+		IMaker.Metadata memory maker_ = taker_.metadata;
 
 		uint256 skuWithdraw = _receivedSkuQuantityOrIds[takerId_];
-
-		_withdraw(withdrawTo_, maker_.sku, skuWithdraw, maker_.skuType == 0, true);
 
 		uint256 sendPayment = _sentPaymentQuantityOrIds[takerId_];
 
 		uint256 paymentWithdraw = taker_.requestPriceQuantityOrId - sendPayment;
 
-		_withdraw(
-			withdrawTo_,
-			maker_.paymentCurrency,
-			paymentWithdraw,
-			maker_.paymentCurrencyType == 0,
-			true
-		);
-
 		delete _takers[takerId_];
-		_takerIds.remove(bytes32(takerId_));
 		delete _sentPaymentQuantityOrIds[takerId_];
 		delete _receivedSkuQuantityOrIds[takerId_];
+		_takerIds.remove(bytes32(takerId_));
+
+		// withdraw operations must be party to the end to prevent re-entry attacks
+
+		if (skuWithdraw > 0) {
+			_withdraw(withdrawTo_, maker_.sku, skuWithdraw, maker_.skuType == 0, true);
+		}
+
+		if (paymentWithdraw > 0) {
+			_withdraw(
+				withdrawTo_,
+				maker_.paymentCurrency,
+				paymentWithdraw,
+				maker_.paymentCurrencyType == 0,
+				true
+			);
+		}
 
 		emit TakerBurn(address(this), takerId_, skuWithdraw, sendPayment);
+	}
+
+	modifier nonTakerCallbackReentrant(uint256 takerId_) {
+		_requireTakerId(takerId_);
+		require(_takerCallbackReentrancyGuard == 0, 'TAKER: takerCallback, reentrancy call');
+		_takerCallbackReentrancyGuard = takerId_;
+		_;
+		_takerCallbackReentrancyGuard = 0;
 	}
 
 	function takerCallback(
 		uint256 takerId_,
 		uint256 responseSkuQuantityOrId_,
 		uint256 responsePriceQuantityOrId_
-	) external override {
-		_requireTakerId(takerId_);
-
+	) external override nonTakerCallbackReentrant(takerId_) {
 		TakerContext storage taker_ = _takers[takerId_];
 
 		require(
@@ -244,7 +262,7 @@ abstract contract Taker is ITaker {
 			metadata_.paymentCurrency,
 			responsePriceQuantityOrId_,
 			metadata_.paymentCurrencyType == 0,
-			true
+			false
 		);
 
 		_receivedSkuQuantityOrIds[takerId_] += responseSkuQuantityOrId_;

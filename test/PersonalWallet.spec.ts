@@ -1,7 +1,7 @@
 import 'hardhat';
 import '@typechain/hardhat';
 import '@nomicfoundation/hardhat-chai-matchers';
-
+import { PANIC_CODES } from '@nomicfoundation/hardhat-chai-matchers/panic';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
@@ -29,9 +29,7 @@ describe('Peronsal wallet contract tests', async () => {
 	it('Check ownable', async () => {
 		expect(await wallet.owner()).to.be.equal(s1.address);
 
-		// The following methods should not ever be called successfully
-
-		await expect(wallet.connect(s2).transferOwnership(s3.address)).to.be.rejectedWith(
+		await expect(wallet.connect(s2).transferOwnership(s3.address)).to.be.revertedWith(
 			'Ownable: caller is not the owner',
 		);
 
@@ -46,6 +44,6 @@ describe('Peronsal wallet contract tests', async () => {
 	it('External / public methods check', async () => {
 		const wallet = PersonalWallet__factory.createInterface();
 
-		expect(Object.keys(wallet.functions).length).to.be.equal(18);
+		expect(Object.keys(wallet.functions).length).to.be.equal(19);
 	});
 });
