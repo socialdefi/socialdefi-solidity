@@ -19,11 +19,11 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 const config: HardhatUserConfig = {
 	networks: {
 		hardhat: {
-			// mining: {
-			// 	interval: 200,
-			// },
+			mining: {
+				interval: 4000,
+			},
 			forking: {
-				url: process.env.FORKING_URL as string,
+				url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY as string}`,
 				blockNumber: 15788498,
 			},
 			loggingEnabled: true,

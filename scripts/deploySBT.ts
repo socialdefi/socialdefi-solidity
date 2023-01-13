@@ -1,14 +1,16 @@
 import { Deployer } from './deploy';
-import hre from 'hardhat';
+import { ethers } from 'hardhat';
 
 async function main() {
-	await hre.run('compile');
+	const Wallet = await ethers.getContractFactory('PersonalWallet');
 
-	const deploy = new Deployer();
+	// const sbt = await deploy.deploy('PersonalWallet', [
+	// 	'0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+	// ]);
 
-	const sbt = await deploy.deploy('SBTFactory', []);
+	const wallet = await Wallet.deploy('0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2');
 
-	console.log('deply sbt', sbt.address);
+	await wallet.deployed();
 
 	process.exit(0);
 }

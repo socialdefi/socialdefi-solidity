@@ -6,7 +6,7 @@
 	"scripts": {
 		"build": "npx hardhat compile && tsc --project tsconfig.tc.json && npm run copy-dts",
 		"test": "npx hardhat test",
-		"deploy": "npx hardhat run ./scripts/deploySBT.ts",
+		"deploy": "npx hardhat run --network localhost ./scripts/deploySBT.ts",
 		"accounts": "npx hardhat accounts",
 		"clean": "npx hardhat clean",
 		"copy-dts": "copyfiles -u 1 \"src/typechain/**/*.d.ts\" dist/typechain"
